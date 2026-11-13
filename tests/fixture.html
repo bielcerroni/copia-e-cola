@@ -1,0 +1,9 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"></head><body>
+<h1>Teste de upload</h1>
+<label>Arquivo <input id="upload" type="file" accept="image/*,.pdf"></label>
+<input id="multi" type="file" multiple>
+<p id="state">Nenhum arquivo escolhido.</p>
+<script>for(const input of document.querySelectorAll('input[type=file]')) input.addEventListener('change',()=>{
+ document.getElementById('state').textContent = [...input.files].map(file=>file.name).join(',');
+});</script>
+</body></html>
