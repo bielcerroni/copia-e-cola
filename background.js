@@ -59,10 +59,39 @@ async function readDownload(id, preview) {
   return {name, mime, base64: bytesToBase64(bytes), size: bytes.byteLength};
 }
 
+let creatingOffscreen = null;
+async function ensureClipboardDocument() {
+  if (creatingOffscreen) return creatingOffscreen;
+  creatingOffscreen = (async () => {
+    const url = chrome.runtime.getURL('offscreen.html');
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT'], documentUrls: [url]
+    });
+    if (!contexts.length) {
+      await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['CLIPBOARD'],
+        justification: 'Ler imagem copiada somente quando o usuário abre o painel de anexos'
+      });
+    }
+  })();
+  try { await creatingOffscreen; } finally { creatingOffscreen = null; }
+}
+
+async function readClipboardImage() {
+  await ensureClipboardDocument();
+  const config = {...U.DEFAULTS, ...await chrome.storage.local.get(U.DEFAULTS)};
+  const maxBytes = Math.max(1, Math.min(40, Number(config.maxFileMB) || 12)) * 1048576;
+  const result = await chrome.runtime.sendMessage({type: 'CC_OFFSCREEN_READ', maxBytes});
+  if (!result?.ok) return {hasImage: false};
+  return result;
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, respond) => {
-  if (!message || !['CC_LIST', 'CC_READ', 'CC_PREVIEW', 'CC_OPTIONS', 'CC_DETAILS'].includes(message.type)) return false;
+  if (!message || !['CC_LIST', 'CC_READ', 'CC_PREVIEW', 'CC_OPTIONS', 'CC_DETAILS', 'CC_CLIPBOARD'].includes(message.type)) return false;
   (async () => {
     if (message.type === 'CC_LIST') return await listDownloads(message.accept);
+    if (message.type === 'CC_CLIPBOARD') return await readClipboardImage();
     if (message.type === 'CC_OPTIONS') { await chrome.runtime.openOptionsPage(); return {}; }
     if (message.type === 'CC_DETAILS') { await chrome.tabs.create({url: `chrome://extensions/?id=${chrome.runtime.id}`}); return {}; }
     return await readDownload(message.id, message.type === 'CC_PREVIEW');

@@ -371,23 +371,22 @@
     section.append(button);
     paintSelections();
   }
+  // A página pode proibir clipboard-read por Permissions Policy (ex.: WhatsApp Web).
+  // A leitura é solicitada somente durante a abertura do painel, no contexto da extensão.
   async function readClipboard(token) {
     if (!prefs.showClipboard) return;
-    if (!navigator.clipboard?.read) {
-      renderClipboard('Pressione Ctrl+V com o painel aberto para usar a imagem copiada.');
-      return;
-    }
     try {
-      const items = await navigator.clipboard.read();
+      const result = await send({type: 'CC_CLIPBOARD'});
       if (token !== generation || !root) return;
-      const item = items.find(clip => clip.types.some(type => type.startsWith('image/')));
-      if (!item) { renderClipboard(); return; }
-      const type = item.types.find(value => value.startsWith('image/'));
-      const blob = await item.getType(type);
-      if (token !== generation || !root) return;
-      assignClipboardFile(new File([blob], `imagem-copiada-${Date.now()}.${type === 'image/jpeg' ? 'jpg' : type === 'image/svg+xml' ? 'svg' : type.split('/')[1]}`, {type}));
+      if (!result?.ok || !result?.hasImage) {
+        renderClipboard('Nenhuma imagem disponível. Use Ctrl+V com o painel selecionado.');
+        return;
+      }
+      assignClipboardFile(makeFile(result.base64, result.name, result.mime));
     } catch (_) {
-      if (token === generation && root) renderClipboard('Acesso não disponível. Copie uma imagem e pressione Ctrl+V aqui.');
+      if (token === generation && root) {
+        renderClipboard('A leitura automática não está disponível. Clique no painel e use Ctrl+V.');
+      }
     }
   }
   function assignClipboardFile(file) {
@@ -543,7 +542,7 @@
     renderDownloads('Carregando downloads…');
     updateAction();
     position(input.getBoundingClientRect());
-    if (prefs.showClipboard) readClipboard(token); // starts during the click user gesture
+    if (prefs.showClipboard) readClipboard(token); // somente após a abertura solicitada pelo usuário
     loadDownloads(token);
     requestAnimationFrame(() => { if (token === generation && root) position(input.getBoundingClientRect()); });
   }
