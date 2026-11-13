@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Copia & Cola — anexos rápidos",
   "short_name": "Copia & Cola",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Anexe imagens da área de transferência e downloads recentes sem procurar em pastas.",
   "permissions": [
     "downloads",

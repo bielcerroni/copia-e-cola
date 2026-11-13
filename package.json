@@ -1,7 +1,7 @@
 {
   "name": "copia-e-cola-chrome",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Extensão Chrome MV3 para anexar arquivos recentes e imagens copiadas",
   "scripts": {
     "test": "node --test tests/shared.test.js"

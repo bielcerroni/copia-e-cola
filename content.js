@@ -513,6 +513,7 @@
     const style = el('style'); style.textContent = CSS;
     root.append(style);
     const panel = el('section', 'panel'); panel.setAttribute('role', 'dialog');
+    panel.tabIndex = -1; // recebe Ctrl+V sem capturar a colagem do WhatsApp
     panel.setAttribute('aria-label', 'Copia & Cola, selecionar anexo');
     const head = el('div', 'head');
     const logo = el('span', 'logo'); logo.append(svgIcon('upload', 22));
@@ -538,6 +539,21 @@
     settings.addEventListener('click', () => send({type: 'CC_OPTIONS'})); bottom.append(settings);
     scroller.append(body);
     panel.append(head, scroller, footer, bottom); root.append(panel);
+    // O evento é tratado só dentro do Shadow DOM. Não intercepta o editor do site,
+    // inclusive quando outra extensão de privacidade está instalada.
+    root.addEventListener('paste', event => {
+      if (!prefs.showClipboard || !event.clipboardData) return;
+      const entry = [...event.clipboardData.items].find(item =>
+        item.kind === 'file' && item.type.startsWith('image/'));
+      const file = entry?.getAsFile();
+      if (!file) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const ext = file.type === 'image/jpeg' ? 'jpg' :
+        file.type === 'image/webp' ? 'webp' : file.type === 'image/gif' ? 'gif' : 'png';
+      assignClipboardFile(new File([file], `imagem-copiada-${Date.now()}.${ext}`, {type: file.type}));
+    });
+    panel.focus({preventScroll: true});
     if (prefs.showClipboard) renderClipboard('Lendo área de transferência…');
     renderDownloads('Carregando downloads…');
     updateAction();
@@ -555,21 +571,16 @@
     if (event.isTrusted) lastGesture = Date.now();
     if (host && event.key === 'Escape') {event.preventDefault(); close();}
   }, true);
-  document.addEventListener('paste', event => {
-    if (!root || !prefs.showClipboard || !event.clipboardData) return;
-    const clipboard = [...event.clipboardData.items].find(item => item.kind === 'file' && item.type.startsWith('image/'));
-    const file = clipboard?.getAsFile();
-    if (!file) return;
-    event.preventDefault(); event.stopImmediatePropagation();
-    assignClipboardFile(new File([file], `imagem-copiada-${Date.now()}.${file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/webp' ? 'webp' : 'png'}`, {type: file.type}));
-  }, true);
   document.addEventListener('click', event => {
     if (bypass || event.defaultPrevented || U.ignoredSite(location.hostname, prefs.excludedSites)) return;
+    // Não sobrepõe o escudo do Neblina: o diálogo do Copia & Cola fica fora de #app.
+    const shield = document.getElementById('nb-privacy-shield');
+    if (document.documentElement?.dataset.nbShield === 'true' && shield && !shield.hidden) return;
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || target.type !== 'file' || target.disabled) return;
     // Intercept a genuine click, or a page-triggered input.click() following a user gesture.
     if (!event.isTrusted && Date.now() - lastGesture > 2000) return;
-    event.preventDefault(); event.stopImmediatePropagation();
+    event.preventDefault(); // evita seletor nativo; preserva os listeners de outras extensões
     try {open(target);} catch (_) {openNativePicker();}
   }, true);
 })();
