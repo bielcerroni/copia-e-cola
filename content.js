@@ -12,6 +12,7 @@
   let clipFile = null;
   let clipPreviewUrl = null;
   let downloads = [];
+  let filterText = '';
   let selected = new Set();
   let fileAccess = false;
   let anchor = {x: 24, y: 80};
@@ -26,70 +27,222 @@
   });
 
   const CSS = `
-    :host { all: initial; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
-      color: #202638; --cc-bg: #fff; --cc-text: #202638; --cc-sub: #667187;
-      --cc-border: #e5e8f0; --cc-hover: #f4f3ff; --cc-muted: #f7f8fb;
-      --cc-accent: #675ce7; --cc-shadow: 0 18px 55px rgba(25,29,55,.22); }
-    @media (prefers-color-scheme: dark) { :host { --cc-bg: #1f2430; --cc-text: #edf0f7;
-      --cc-sub: #acb4c6; --cc-border: #373e50; --cc-hover: #2d2b4b;
-      --cc-muted: #292f3d; --cc-shadow: 0 18px 55px rgba(0,0,0,.48); } }
+    :host {
+      all: initial;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color-scheme: light;
+      --cc-bg: #fbfcff; --cc-surface: #ffffff; --cc-raised: #f5f7fc;
+      --cc-text: #20243a; --cc-sub: #6f7990; --cc-faint: #98a1b4;
+      --cc-border: #e5e8f1; --cc-accent: #6d5bea; --cc-accent-text: #6351dc;
+      --cc-accent-soft: #f1edff; --cc-head: #f8f7ff; --cc-scroll: #c9cfdd;
+      --cc-shadow: 0 28px 76px rgba(25, 32, 68, .22), 0 7px 20px rgba(25, 32, 68, .12);
+    }
+    @media (prefers-color-scheme: dark) {
+      :host {
+        color-scheme: dark;
+        --cc-bg: #151b29; --cc-surface: #1d2535; --cc-raised: #242d3f;
+        --cc-text: #f3f5fd; --cc-sub: #a7b3ca; --cc-faint: #7e8ca6;
+        --cc-border: #313a4f; --cc-accent: #9483ff; --cc-accent-text: #b3a5ff;
+        --cc-accent-soft: #292643; --cc-head: #1e2034; --cc-scroll: #515e76;
+        --cc-shadow: 0 30px 80px rgba(0, 0, 0, .52), 0 8px 20px rgba(0, 0, 0, .28);
+      }
+    }
     * { box-sizing: border-box; }
-    .panel { position: fixed; width: min(390px, calc(100vw - 24px)); max-height: min(590px, calc(100vh - 24px));
-      overflow-y: auto; overscroll-behavior: contain; border-radius: 17px; background: var(--cc-bg);
-      color: var(--cc-text); border: 1px solid var(--cc-border); box-shadow: var(--cc-shadow);
-      pointer-events: auto; font-size: 13px; line-height: 1.4; }
-    .head { display: flex; align-items: center; gap: 11px; padding: 16px 17px 13px; }
-    .logo { width: 35px; height: 35px; display: grid; place-items: center; color: #fff;
-      background: linear-gradient(140deg, #756af4, #4e45c9); border-radius: 11px; font-size: 20px; font-weight: 800; }
-    .name { font-size: 15px; font-weight: 750; letter-spacing: -.3px; }
-    .subtitle { font-size: 11px; color: var(--cc-sub); margin-top: 2px; }
-    button { font: inherit; cursor: pointer; color: inherit; }
-    .close { margin-left: auto; width: 28px; height: 28px; border: none; background: transparent;
-      color: var(--cc-sub); border-radius: 8px; font-size: 22px; line-height: 1; }
-    .close:hover, .minor:hover { background: var(--cc-hover); }
-    .body { padding: 0 14px; }
-    .label { display: flex; align-items: center; justify-content: space-between; color: var(--cc-sub);
-      font-weight: 650; font-size: 11px; text-transform: uppercase; letter-spacing: .65px; margin: 8px 4px 9px; }
-    .section { margin-bottom: 14px; }
-    .clipboard { width: 100%; display: flex; align-items: center; padding: 9px; gap: 11px;
-      background: var(--cc-muted); border: 1px solid var(--cc-border); text-align: left;
-      border-radius: 11px; min-height: 67px; }
-    .clipboard:hover, .item:hover { background: var(--cc-hover); }
-    .clipboard.selected, .item.selected { border-color: var(--cc-accent); background: var(--cc-hover); }
-    .preview { width: 49px; height: 49px; object-fit: cover; flex-shrink: 0;
-      border-radius: 8px; background: var(--cc-bg); border: 1px solid var(--cc-border); }
-    .clipName { font-weight: 650; font-size: 13px; }
-    .clipHint { color: var(--cc-sub); font-size: 11px; margin-top: 2px; }
-    .empty { font-size: 12px; color: var(--cc-sub); background: var(--cc-muted);
-      border-radius: 9px; padding: 12px; }
-    .files { display: flex; flex-direction: column; gap: 5px; }
-    .item { width: 100%; display: flex; align-items: center; gap: 11px; text-align: left;
-      background: transparent; border: 1px solid transparent; border-radius: 10px; min-height: 52px; padding: 6px 8px; }
-    .fileIcon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 9px;
-      background: var(--cc-muted); flex-shrink: 0; font-size: 10px; color: var(--cc-accent); font-weight: 800; }
-    .fileIcon img { width: 29px; height: 29px; object-fit: contain; }
-    .fileTitle { font-size: 12px; font-weight: 650; overflow: hidden; text-overflow: ellipsis;
-      white-space: nowrap; max-width: 265px; }
-    .fileMeta { font-size: 11px; color: var(--cc-sub); margin-top: 3px; }
+    .panel {
+      position: fixed; display: flex; flex-direction: column; overflow: hidden;
+      width: min(414px, calc(100vw - 24px)); max-height: min(620px, calc(100vh - 24px));
+      border: 1px solid var(--cc-border); border-radius: 21px;
+      background: var(--cc-bg); color: var(--cc-text); box-shadow: var(--cc-shadow);
+      pointer-events: auto; font-size: 13px; line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--cc-accent); outline-offset: 2px;
+    }
+    .head {
+      display: flex; align-items: center; gap: 13px; flex: none;
+      padding: 19px 19px 17px;
+      border-bottom: 1px solid var(--cc-border);
+      background: radial-gradient(ellipse at 3% 0%, var(--cc-accent-soft), transparent 60%), var(--cc-head);
+    }
+    .logo {
+      display: grid; place-items: center; flex: none; width: 44px; height: 44px;
+      border-radius: 14px; color: white;
+      background: linear-gradient(145deg, #8d7dff 0%, #6450dd 82%);
+      border: 1px solid rgba(255,255,255,.2);
+      box-shadow: 0 5px 16px rgba(109, 91, 234, .27);
+    }
+    .brand { min-width: 0; flex: 1; }
+    .name { font-weight: 760; font-size: 16px; letter-spacing: -.45px; line-height: 1.2; }
+    .subtitle { font-size: 11px; color: var(--cc-sub); margin-top: 5px; }
+    .close {
+      display: grid; place-items: center; margin-left: auto; flex: none;
+      width: 31px; height: 31px; border: 1px solid transparent;
+      background: transparent; border-radius: 10px; color: var(--cc-sub);
+      transition: background .15s, color .15s;
+    }
+    .close:hover { background: var(--cc-raised); color: var(--cc-text); }
+    .scroller { overflow-y: auto; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--cc-scroll) transparent; }
+    .scroller::-webkit-scrollbar { width: 7px; }
+    .scroller::-webkit-scrollbar-track { background: transparent; }
+    .scroller::-webkit-scrollbar-thumb { background: var(--cc-scroll); border: 2px solid var(--cc-bg); border-radius: 8px; }
+    .body { padding: 18px 17px 14px; }
+    .section { margin-bottom: 19px; }
+    .section:last-child { margin-bottom: 6px; }
+    .label {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin: 0 2px 11px; color: var(--cc-sub);
+      font-size: 10px; font-weight: 780; letter-spacing: .9px; text-transform: uppercase;
+    }
+    .labelTitle { display: flex; align-items: center; gap: 7px; }
+    .labelTitle svg { color: var(--cc-accent-text); }
+    .labelCount {
+      color: var(--cc-accent-text); background: var(--cc-accent-soft);
+      border-radius: 20px; padding: 4px 8px;
+      font-size: 10px; font-weight: 720; letter-spacing: .2px; text-transform: none;
+    }
+    .clipboard {
+      display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+      padding: 11px; min-height: 83px; border-radius: 15px;
+      background: linear-gradient(115deg, var(--cc-accent-soft), var(--cc-surface) 85%);
+      border: 1px solid var(--cc-border);
+      transition: border-color .17s, transform .17s, background .17s;
+    }
+    .clipboard:hover { border-color: var(--cc-accent); transform: translateY(-1px); }
+    .preview {
+      flex: none; width: 57px; height: 57px; object-fit: cover;
+      border-radius: 11px; background: var(--cc-raised); border: 1px solid var(--cc-border);
+    }
+    .clipEyebrow {
+      color: var(--cc-accent-text); font-size: 9px; font-weight: 780;
+      letter-spacing: .55px; text-transform: uppercase; margin-bottom: 5px;
+    }
+    .clipName { font-size: 13px; font-weight: 740; line-height: 1.2; }
+    .clipHint { color: var(--cc-sub); font-size: 11px; margin-top: 5px; }
+    .clipArrow { display: grid; place-items: center; flex: none; width: 29px; height: 29px;
+      border-radius: 9px; color: var(--cc-accent-text); background: var(--cc-accent-soft); }
+    .empty {
+      padding: 14px; color: var(--cc-sub); font-size: 12px; line-height: 1.55;
+      border: 1px dashed var(--cc-border); border-radius: 12px; background: var(--cc-raised);
+    }
+    .search {
+      display: flex; align-items: center; gap: 9px; width: 100%; height: 38px;
+      padding: 0 12px; margin: 0 0 10px; border-radius: 11px;
+      background: var(--cc-surface); border: 1px solid var(--cc-border);
+      color: var(--cc-faint); transition: border-color .15s, box-shadow .15s;
+    }
+    .search:focus-within { border-color: var(--cc-accent); box-shadow: 0 0 0 3px var(--cc-accent-soft); }
+    .search input {
+      outline: 0; border: 0; min-width: 0; width: 100%; padding: 0;
+      background: transparent; color: var(--cc-text); font-size: 12px;
+    }
+    .search input:focus-visible { outline: 0; }
+    .search input::placeholder { color: var(--cc-faint); }
+    .search input::-webkit-search-cancel-button { cursor: pointer; }
+    .files { display: flex; flex-direction: column; gap: 6px; }
+    .item {
+      position: relative; display: flex; align-items: center; gap: 11px;
+      width: 100%; min-height: 64px; padding: 9px 10px;
+      border-radius: 12px; border: 1px solid transparent;
+      background: transparent; text-align: left;
+      transition: background .16s, border-color .16s;
+    }
+    .item:hover { background: var(--cc-surface); border-color: var(--cc-border); }
+    .item.selected, .clipboard.selected {
+      border-color: var(--cc-accent); background: var(--cc-accent-soft);
+    }
+    .fileIcon {
+      display: grid; place-items: center; flex: none;
+      width: 46px; height: 46px; border-radius: 11px;
+      background: var(--cc-raised); color: var(--cc-accent-text);
+      font-size: 10px; font-weight: 800; border: 1px solid var(--cc-border);
+      overflow: hidden;
+    }
+    .fileIcon img { display: block; width: 100%; height: 100%; object-fit: cover; }
     .fileText { flex: 1; min-width: 0; }
-    .check { font-size: 17px; color: var(--cc-accent); margin-left: auto; }
-    .notice { background: var(--cc-muted); border-radius: 9px; padding: 10px;
-      margin: 0 0 12px; color: var(--cc-sub); font-size: 11px; line-height: 1.5; }
-    .notice button { color: var(--cc-accent); padding: 0; border: none; background: transparent;
-      font-weight: 700; text-decoration: underline; margin-top: 4px; }
-    .error { color: #c63a49; font-size: 11px; margin: 0 0 9px; min-height: 0; }
-    .footer { display: flex; padding: 12px 15px; border-top: 1px solid var(--cc-border); gap: 9px; align-items: center; }
-    .primary { background: var(--cc-accent); border: 1px solid var(--cc-accent); border-radius: 9px;
-      color: #fff; font-weight: 650; padding: 10px 12px; flex: 1; }
-    .primary:disabled { opacity: .5; cursor: wait; }
-    .minor { border: 1px solid var(--cc-border); border-radius: 9px; background: transparent; padding: 10px 12px; }
-    .settings { margin-left: auto; border: 0; background: transparent; color: var(--cc-sub);
-      padding: 6px 1px; text-decoration: underline; font-size: 11px; }
-    .bottom { padding: 0 17px 11px; display: flex; justify-content: space-between;
-      align-items: center; color: var(--cc-sub); font-size: 10px; }
-    .spinner { opacity: .8; }
-    button:focus-visible { outline: 2px solid var(--cc-accent); outline-offset: 2px; }
+    .fileTitle {
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      font-weight: 670; font-size: 12px; line-height: 1.4;
+    }
+    .fileMeta { color: var(--cc-sub); font-size: 10.5px; margin-top: 5px; }
+    .fileTag {
+      flex: none; border: 1px solid var(--cc-border);
+      color: var(--cc-sub); border-radius: 6px; padding: 3px 5px;
+      font-size: 9px; font-weight: 760; letter-spacing: .45px;
+      background: var(--cc-raised);
+    }
+    .check { display: grid; place-items: center; flex: none; color: var(--cc-accent-text);
+      font-size: 16px; font-weight: 800; }
+    .check:empty { display: none; }
+    .notice {
+      border: 1px solid var(--cc-border); border-radius: 11px;
+      background: var(--cc-raised); padding: 11px 12px;
+      margin: 0 0 10px; color: var(--cc-sub); font-size: 11px; line-height: 1.6;
+    }
+    .notice button { color: var(--cc-accent-text); border: 0; padding: 0; margin: 4px 0 0;
+      background: transparent; font-weight: 750; text-decoration: underline; }
+    .error { color: #e86976; font-size: 11px; margin: 0 0 8px; }
+    .error:empty { display: none; }
+    .footer {
+      display: flex; flex: none; align-items: center; gap: 9px;
+      padding: 13px 17px 4px; border-top: 1px solid var(--cc-border);
+      background: var(--cc-bg);
+    }
+    .minor, .primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border-radius: 11px; padding: 11px 12px; min-height: 42px;
+      font-size: 12px; font-weight: 760; transition: filter .15s, background .15s;
+    }
+    .minor { flex: 1; background: var(--cc-surface); border: 1px solid var(--cc-border); }
+    .minor:hover { background: var(--cc-raised); }
+    .primary { flex: 1; color: white; border: 1px solid #6754e5; background: linear-gradient(135deg,#8774ff,#6751df); }
+    .primary:hover { filter: brightness(1.08); }
+    .primary:disabled { opacity: .5; cursor: not-allowed; }
+    .primary[hidden] { display: none; }
+    .bottom {
+      display: flex; align-items: center; justify-content: space-between;
+      flex: none; padding: 4px 19px 12px; color: var(--cc-faint);
+      background: var(--cc-bg); font-size: 10px;
+    }
+    .settings { display: inline-flex; align-items: center; gap: 5px;
+      background: transparent; border: 0; padding: 5px 0; color: var(--cc-sub);
+      font-size: 10px; font-weight: 650; }
+    .settings:hover { color: var(--cc-accent-text); }
+    @media (max-width: 370px) {
+      .head { padding: 14px; }
+      .body { padding: 14px 12px 9px; }
+      .footer { padding-left: 12px; padding-right: 12px; }
+      .fileTag { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .clipboard, .item, .search, .minor, .primary, .close { transition: none; }
+    }
   `;
+
+  const svgIcon = (name, size = 18) => {
+    const paths = {
+      upload: 'M12 16V3m0 0L7 8m5-5 5 5M4 17v3h16v-3',
+      close: 'M18 6 6 18M6 6l12 12',
+      clipboard: 'M9 4h6m-8 3H5v14h14V7h-2M9 3h6v4H9z',
+      download: 'M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3',
+      search: 'M21 21l-4.5-4.5M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z',
+      folder: 'M3 6h7l2 2h9v11H3z',
+      settings: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19.3 12a7 7 0 0 0-.1-1l2-1.6-2-3.5-2.4 1a8 8 0 0 0-1.7-1l-.4-2.6h-4l-.4 2.6a8 8 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.5 2.4-1a8 8 0 0 0 1.7 1l.4 2.6h4l.4-2.6a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.6a7 7 0 0 0 .1-1Z',
+      arrow: 'M5 12h14m-5-5 5 5-5 5'
+    };
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', size); svg.setAttribute('height', size);
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '1.8');
+    svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', paths[name] || paths.upload);
+    svg.append(path);
+    return svg;
+  };
 
   const send = message => chrome.runtime.sendMessage(message);
   const el = (tag, cls, text) => {
@@ -110,6 +263,7 @@
     clearPreview();
     clipFile = null;
     downloads = [];
+    filterText = '';
     selected.clear();
     busy = false;
   }
@@ -186,16 +340,19 @@
       setBusy(false);
     }
   }
-  function sectionLabel(title, extra = '') {
+  function sectionLabel(title, extra = '', glyph = '') {
     const label = el('div', 'label');
-    label.append(el('span', '', title));
-    if (extra) label.append(el('span', '', extra));
+    const titleNode = el('span', 'labelTitle');
+    if (glyph) titleNode.append(svgIcon(glyph, 14));
+    titleNode.append(el('span', '', title));
+    label.append(titleNode);
+    if (extra) label.append(el('span', 'labelCount', extra));
     return label;
   }
   function renderClipboard(message = '') {
     const section = root?.querySelector('#cc-clip');
     if (!section) return;
-    section.replaceChildren(sectionLabel('Área de transferência'));
+    section.replaceChildren(sectionLabel('Área de transferência', '', 'clipboard'));
     if (!clipFile) {
       section.append(el('div', 'empty', message || 'Copie uma imagem ou pressione Ctrl+V com este painel aberto.'));
       return;
@@ -207,8 +364,9 @@
     img.alt = 'Imagem copiada';
     img.src = clipPreviewUrl;
     const text = el('div', 'fileText');
-    text.append(el('div', 'clipName', 'Imagem copiada'), el('div', 'clipHint', `${U.sizeLabel(clipFile.size)} · Clique para anexar`));
-    button.append(img, text, el('span', 'check'));
+    text.append(el('div', 'clipEyebrow', 'Disponível agora'), el('div', 'clipName', 'Imagem copiada'), el('div', 'clipHint', `${U.sizeLabel(clipFile.size)} · Clique para anexar`));
+    const arrow = el('span', 'clipArrow'); arrow.append(svgIcon('arrow', 16));
+    button.append(img, text, arrow, el('span', 'check'));
     button.addEventListener('click', () => chooseItem('clipboard'));
     section.append(button);
     paintSelections();
@@ -242,29 +400,53 @@
     clipPreviewUrl = URL.createObjectURL(file);
     renderClipboard();
   }
-  function renderDownloads(message) {
-    const section = root?.querySelector('#cc-files');
-    if (!section) return;
-    section.replaceChildren(sectionLabel('Downloads recentes', `${downloads.length} arquivos`));
-    const list = el('div', 'files');
-    if (!downloads.length) list.append(el('div', 'empty', message || 'Nenhum download compatível encontrado.'));
-    for (const item of downloads) {
+  function drawDownloadItems(list, message = '') {
+    list.replaceChildren();
+    const visible = downloads.filter(item => item.name.toLocaleLowerCase('pt-BR').includes(filterText.toLocaleLowerCase('pt-BR')));
+    if (!visible.length) {
+      list.append(el('div', 'empty', filterText ? 'Nenhum arquivo corresponde à busca.' : (message || 'Nenhum download compatível encontrado.')));
+      return;
+    }
+    for (const item of visible) {
       const button = el('button', 'item'); button.type = 'button';
       button.dataset.key = `download:${item.id}`;
-      button.title = item.name;
+      button.setAttribute('aria-label', item.name);
       button.setAttribute('aria-pressed', 'false');
-      const icon = el('span', 'fileIcon');
-      if (item.icon && item.icon.startsWith('data:')) {
-        const img = el('img'); img.src = item.icon; img.alt = ''; icon.append(img);
-      } else icon.textContent = (U.extension(item.name) || 'FILE').slice(0, 4).toUpperCase();
-      const text = el('span', 'fileText');
-      text.append(el('div', 'fileTitle', item.name), el('div', 'fileMeta', `${U.sizeLabel(item.size)} · ${item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Recente'}`));
-      button.append(icon, text, el('span', 'check'));
+      const fileIcon = el('span', 'fileIcon');
+      if (item.previewUrl || (item.icon && item.icon.startsWith('data:'))) {
+        const img = el('img'); img.src = item.previewUrl || item.icon; img.alt = ''; fileIcon.append(img);
+      } else fileIcon.textContent = (U.extension(item.name) || 'FILE').slice(0, 4).toUpperCase();
+      const fileText = el('span', 'fileText');
+      fileText.append(el('div', 'fileTitle', item.name),
+        el('div', 'fileMeta', `${U.sizeLabel(item.size)} · ${item.date ? new Date(item.date).toLocaleDateString('pt-BR') : 'Recente'}`));
+      const tag = el('span', 'fileTag', (U.extension(item.name) || 'FILE').slice(0, 5).toUpperCase());
+      button.append(fileIcon, fileText, tag, el('span', 'check'));
       button.addEventListener('click', () => chooseItem(button.dataset.key));
       list.append(button);
     }
-    section.append(list);
     paintSelections();
+  }
+  function renderDownloads(message = '') {
+    const section = root?.querySelector('#cc-files');
+    if (!section) return;
+    section.replaceChildren(sectionLabel('Downloads recentes', `${downloads.length} arquivos`, 'download'));
+    if (downloads.length > 0) {
+      const search = el('label', 'search');
+      search.append(svgIcon('search', 16));
+      const input = el('input', 'searchInput');
+      input.type = 'search'; input.placeholder = 'Buscar arquivo pelo nome...';
+      input.setAttribute('aria-label', 'Buscar downloads recentes');
+      input.value = filterText;
+      search.append(input);
+      section.append(search);
+      const list = el('div', 'files'); section.append(list);
+      input.addEventListener('input', () => {filterText = input.value; drawDownloadItems(list);});
+      drawDownloadItems(list, message);
+      return;
+    }
+    const list = el('div', 'files');
+    section.append(list);
+    drawDownloadItems(list, message);
   }
   async function loadPreviews(token) {
     for (const item of downloads.slice(0, 8)) {
@@ -277,7 +459,7 @@
         const icon = element?.querySelector('.fileIcon');
         if (icon) {
           const img = el('img'); img.src = `data:${data.mime};base64,${data.base64}`; img.alt = '';
-          img.style.cssText = 'width:38px;height:38px;object-fit:cover;border-radius:8px;';
+          item.previewUrl = img.src;
           icon.replaceChildren(img);
         }
       } catch (_) { /* previews optional */ }
@@ -312,8 +494,8 @@
   }
   function position(rect) {
     const panel = root.querySelector('.panel');
-    const w = Math.min(390, window.innerWidth - 24);
-    const h = Math.min(panel.scrollHeight, 590, window.innerHeight - 24);
+    const w = Math.min(414, window.innerWidth - 24);
+    const h = Math.min(panel.getBoundingClientRect().height, 620, window.innerHeight - 24);
     const x = rect?.width > 0 ? rect.left : anchor.x;
     const y = rect?.height > 0 ? rect.bottom + 8 : anchor.y + 9;
     const left = Math.max(12, Math.min(x, window.innerWidth - w - 12));
@@ -334,27 +516,29 @@
     const panel = el('section', 'panel'); panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', 'Copia & Cola, selecionar anexo');
     const head = el('div', 'head');
-    const logo = el('span', 'logo', '↥');
-    const brand = el('div'); brand.append(el('div', 'name', 'Copia & Cola'), el('div', 'subtitle', 'Anexe sem procurar em pastas'));
-    const closeButton = el('button', 'close', '×'); closeButton.type = 'button'; closeButton.setAttribute('aria-label', 'Fechar');
+    const logo = el('span', 'logo'); logo.append(svgIcon('upload', 22));
+    const brand = el('div', 'brand'); brand.append(el('div', 'name', 'Copia & Cola'), el('div', 'subtitle', 'Anexe arquivos sem sair da página'));
+    const closeButton = el('button', 'close'); closeButton.append(svgIcon('close', 18)); closeButton.type = 'button'; closeButton.setAttribute('aria-label', 'Fechar');
     closeButton.addEventListener('click', close);
     head.append(logo, brand, closeButton);
+    const scroller = el('div', 'scroller');
     const body = el('div', 'body');
     if (prefs.showClipboard) { const section = el('section', 'section'); section.id = 'cc-clip'; body.append(section); }
     const files = el('section', 'section'); files.id = 'cc-files'; body.append(files);
     const access = el('div'); access.id = 'cc-access'; body.append(access);
     const error = el('div', 'error'); error.setAttribute('role', 'status'); body.append(error);
     const footer = el('div', 'footer');
-    const native = el('button', 'minor', 'Escolher do computador'); native.type = 'button';
+    const native = el('button', 'minor'); native.append(svgIcon('folder', 17), el('span', '', 'Escolher do computador')); native.type = 'button';
     native.addEventListener('click', openNativePicker);
     const action = el('button', 'primary'); action.type = 'button';
     action.addEventListener('click', attachSelection);
     footer.append(native, action);
     const bottom = el('div', 'bottom');
     bottom.append(el('span', '', 'Esc para fechar'));
-    const settings = el('button', 'settings', 'Preferências'); settings.type = 'button';
+    const settings = el('button', 'settings'); settings.append(svgIcon('settings', 13), el('span', '', 'Preferências')); settings.type = 'button';
     settings.addEventListener('click', () => send({type: 'CC_OPTIONS'})); bottom.append(settings);
-    panel.append(head, body, footer, bottom); root.append(panel);
+    scroller.append(body);
+    panel.append(head, scroller, footer, bottom); root.append(panel);
     if (prefs.showClipboard) renderClipboard('Lendo área de transferência…');
     renderDownloads('Carregando downloads…');
     updateAction();

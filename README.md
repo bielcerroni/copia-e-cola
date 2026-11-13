@@ -2,14 +2,14 @@
 
 Extensão **Manifest V3** para anexar rapidamente imagens da área de transferência e arquivos recém-baixados. O comportamento foi inspirado no recurso *Easy Files* do Opera; este projeto é independente e não é afiliado ao Opera.
 
-## Funcionalidades (v0.1.0)
+## Funcionalidades (v0.1.1)
 
 - Painel flutuante ao clicar em um `input[type=file]` em páginas HTTP/HTTPS.
 - Imagens copiadas para a área de transferência (com alternativa **Ctrl+V**).
 - Downloads recentes do Chrome, com filtro pelo atributo `accept` do campo e miniaturas para imagens pequenas quando houver permissão de arquivo.
 - Upload de um ou vários arquivos, conforme o atributo `multiple` do campo.
 - Seletor nativo sempre disponível.
-- Tema claro/escuro automático, visual isolado em Shadow DOM.
+- Tema claro/escuro automático, painel com cabeçalho e rodapé fixos, rolagem interna, miniaturas, cartões e campo de busca local nos downloads; visual isolado em Shadow DOM.
 - Preferências: quantidade de downloads, limite de tamanho, ativar/desativar clipboard e domínios ignorados.
 - Sem backend, telemetria ou envio de arquivos à extensão via rede. Os arquivos escolhidos são entregues ao campo da página selecionada.
 
@@ -37,6 +37,13 @@ Ao clicar no campo de upload, o `content.js` bloqueia temporariamente o seletor 
 - Injeção em páginas HTTP/HTTPS para identificar e complementar campos de upload; sites listados nas preferências ficam de fora.
 
 Nenhum conteúdo de arquivo ou clipboard é armazenado persistentemente pela extensão. **O site de destino recebe os arquivos quando você opta por anexá-los**, como em um upload normal.
+
+## Atualização 0.1.1
+
+- Redesenho visual do painel de upload e das preferências, sem alterar o mecanismo de anexação.
+- Busca por nome nos downloads recentes; seleção e pré-visualização preservadas.
+- Rolagem apenas na lista: cabeçalho e botão de seleção de arquivos ficam sempre visíveis.
+- Correção do botão de anexar múltiplos arquivos oculto em uploads simples.
 
 ## Limitações atuais
 

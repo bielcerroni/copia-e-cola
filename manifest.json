@@ -2,18 +2,34 @@
   "manifest_version": 3,
   "name": "Copia & Cola — anexos rápidos",
   "short_name": "Copia & Cola",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Anexe imagens da área de transferência e downloads recentes sem procurar em pastas.",
-  "permissions": ["downloads", "storage", "clipboardRead"],
-  "host_permissions": ["file:///*"],
-  "background": {"service_worker": "background.js"},
+  "permissions": [
+    "downloads",
+    "storage",
+    "clipboardRead"
+  ],
+  "host_permissions": [
+    "file:///*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "options_page": "options.html",
-  "content_scripts": [{
-    "matches": ["http://*/*", "https://*/*"],
-    "all_frames": true,
-    "match_about_blank": true,
-    "js": ["shared.js", "content.js"],
-    "run_at": "document_start"
-  }],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "all_frames": true,
+      "match_about_blank": true,
+      "js": [
+        "shared.js",
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
   "minimum_chrome_version": "116"
 }
